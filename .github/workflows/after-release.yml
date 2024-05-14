@@ -15,13 +15,14 @@ jobs:
             echo "GIT_SHORT_SHA=${shortSHA}" >> $GITHUB_ENV
             projectNames="${GITHUB_REPOSITORY#*/}"
             expansion="${projectNames#*-}"
+            echo "TAG=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
             
     - name: Notify
       uses: rjstone/discord-webhook-notify@v1.1.1
       with:
         severity: info
         description: |
-          **New ${{env.EXPANSION_NAME}} Prebuild Released!**
+          **Release ${{env.TAG}} Aplicada!**
         details: |
           **Branch:** ${{env.GIT_BRANCH}}
           - [Default Download](${{github.server_url}}/${{ github.repository }}/releases/)
