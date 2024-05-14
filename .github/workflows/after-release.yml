@@ -14,4 +14,4 @@ jobs:
             DISCORD_USERNAME: "SLF-RELEASE"
           uses: Ilshidur/action-discord@master
           with: 
-              args: '<@&${1239735238985257050}> Release do {{ EVENT_PAYLOAD.repository.full_name }} Aplicada! Versão gerada: {{ GITHUB_REF##*/ }} .'
+              args: 'Release do {{ EVENT_PAYLOAD.repository.full_name }} Aplicada! Versão gerada: {{ GITHUB_REF##*/ }} .'
