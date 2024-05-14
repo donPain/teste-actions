@@ -22,7 +22,7 @@ jobs:
       with:
         severity: info
         description: |
-          **Release ${{env.TAG}} Aplicada!**
+          **Release ${{GITHUB_REF##*/}} Aplicada!**
         details: |
           **Branch:** ${{env.GIT_BRANCH}}
           - [Default Download](${{github.server_url}}/${{ github.repository }}/releases/)
