@@ -1,7 +1,7 @@
 name: "after-release"
 on:
   workflow_run:
-    workflows: [Run Tests]
+    workflows: [hello-world]
     types:
       - completed
 jobs:
