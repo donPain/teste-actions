@@ -1,0 +1,16 @@
+name: "after-release"
+on:
+  workflow_run:
+    workflows: [Run Tests]
+    types:
+      - completed
+jobs:
+  discord-message:
+    runs-on: ubuntu-latest
+    steps:
+        - name: Actions for Discord
+          env:
+            DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          uses: Ilshidur/action-discord@master
+          with: 
+              args: 'Release do {{ EVENT_PAYLOAD.repository.full_name }} Aplicada! Versão gerada a partir dos PRs: {{EVENT_PAYLOAD.workflow_run.pull_requests}}.'
