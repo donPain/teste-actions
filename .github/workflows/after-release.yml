@@ -8,10 +8,22 @@ jobs:
   discord-message:
     runs-on: ubuntu-latest
     steps:
-    - name: Test Success
-      uses: rjstone/discord-webhook-notify@v1
-      if: success()
+    - name: Set env
+      run: |
+            echo "GIT_BRANCH=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+            shortSHA=`echo ${GITHUB_SHA} | cut -c1-8`
+            echo "GIT_SHORT_SHA=${shortSHA}" >> $GITHUB_ENV
+            projectNames="${GITHUB_REPOSITORY#*/}"
+            expansion="${projectNames#*-}"
+            
+    - name: Notify
+      uses: rjstone/discord-webhook-notify@v1.1.1
       with:
-          severity: info
-          details: Release Aplicada!
-          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+        severity: info
+        description: |
+          **New ${{env.EXPANSION_NAME}} Prebuild Released!**
+        details: |
+          **Branch:** ${{env.GIT_BRANCH}}
+          - [Default Download](${{github.server_url}}/${{ github.repository }}/releases/)
+        footer: Desenvolvido por Solinftec! We Are Solinftec!
+        webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
