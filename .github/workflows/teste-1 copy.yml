@@ -73,9 +73,6 @@ jobs:
           description: Homologação
           text: | 
             <@&689593112271519745> Homologação **SGPA-API** Aplicada!
-             - **PullRequests**: ${{ steps.set_output.outputs.pr_urls }}
+             - **PullRequests:** ${{ steps.set_output.outputs.pr_urls }}
+             - **Commits desde o ultimo merge:** ${{ steps.set_output.outputs.commits }}
           webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
-
-
-
-          
