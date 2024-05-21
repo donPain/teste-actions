@@ -9,40 +9,68 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: my-step
-        run: echo "Hello World!"
-      - name: Get merged pull requests
+
+      - name: Get the latest merge commit
+        id: get_latest_merge
+        run: |
+          latest_merge_commit=$(git log --merges -n 1 --format="%H" || echo "N/A")
+          echo "Latest merge commit: $latest_merge_commit"
+          echo "::set-output name=latest_merge_commit::$latest_merge_commit"
+
+      - name: Get merged pull requests since the latest merge
         id: get_prs
         run: |
-          commits=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/${{ github.repository }}/commits?sha=${{ github.sha }}")
-          
-          prs=$(echo "$commits" | jq -r 'map(select(.commit.message | contains("Merge pull request #"))) | map(.commit.message | capture("Merge pull request #(?<pr_number>[0-9]+)")) | map(.pr_number) | unique')
-          
-          pr_urls=()
-          for pr in $(echo "$prs" | jq -r '.[]'); do
-            pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/pulls/$pr")
-            pr_url=$(echo "$pr_info" | jq -r '.html_url')
-            pr_urls+=($pr_url)
-          done
-          
-          pr_urls_joined=$(IFS=, ; echo "${pr_urls[*]}")
-          echo "PR URLs: $pr_urls_joined"
-          
-          # Define o output do step
-          echo "::set-output name=pr_urls::$pr_urls_joined"
+          latest_merge_commit="${{ steps.get_latest_merge.outputs.latest_merge_commit }}"
+
+          if [ "$latest_merge_commit" = "N/A" ]; then
+            echo "No previous merge commits found. Setting PR URLs to 'N/A'."
+            pr_urls="N/A"
+          else
+            commits=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/compare/${latest_merge_commit}...${{ github.sha }}")
+            
+            if [ "$(echo "$commits" | jq -r '.commits | length')" -eq 0 ]; then
+              pr_urls="N/A"
+            else
+              # Filtra os PRs mesclados
+              prs=$(echo "$commits" | jq -r '.commits | map(select(.commit.message | contains("Merge pull request #"))) | map(.commit.message | capture("Merge pull request #(?<pr_number>[0-9]+)")) | map(.pr_number) | unique')
+              
+              if [ "$(echo "$prs" | jq -r 'length')" -eq 0 ]; then
+                pr_urls="N/A"
+              else
+                pr_urls=""
+                for pr in $(echo "$prs" | jq -r '.[]'); do
+                  pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                  "https://api.github.com/repos/${{ github.repository }}/pulls/$pr")
+                  pr_url=$(echo "$pr_info" | jq -r '.html_url')
+                  pr_urls+="$pr_url\n"
+                done
+                
+                pr_urls=${pr_urls%\\n}
+                
+                echo -e "$pr_urls" > pr_urls.txt
+              fi
+            fi
+          fi
+
+      - name: Set output with PR URLs
+        id: set_output
+        run: |
+          if [ -f pr_urls.txt ]; then
+            pr_urls=$(cat pr_urls.txt)
+          else
+            pr_urls="N/A"
+          fi
+          echo "::set-output name=pr_urls::$pr_urls"
+
 
       - name: Notify Discord
         uses: rjstone/discord-webhook-notify@v1
+        if: steps.get_prs.outputs.pr_urls != 'N/A'
         with:
           severity: info
           description: Homologação
           text: | 
             <@&689593112271519745> Homologação **SGPA-API** Aplicada!
-             - **PullRequests**":" ${{ steps.get_prs.outputs.pr_urls }}
+             - **PullRequests:** ${{ steps.set_output.outputs.pr_urls }}
           webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
-
-
-
-          
