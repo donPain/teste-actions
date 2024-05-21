@@ -24,14 +24,14 @@ jobs:
           latest_merge_commit="${{ steps.get_latest_merge.outputs.latest_merge_commit }}"
           pr_urls=""
           prs=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                "https://api.github.com/repos/${{ github.repository }}/commits/$latest_merge_commit/pulls" | jq -r '.[] | .html_url')
-          if [ -z "$prs" ]; then
-            pr_urls="N/A"
+                "https://api.github.com/repos/${{ github.repository }}/pulls?state=closed&sort=updated&direction=desc&per_page=100")
+          if [ -n "$prs" ]; then
+            pr_urls=$(echo "$prs" | jq -r '.[] | select(.merged_at != null and .merged_commit_sha == "'"${latest_merge_commit}"'") | .html_url' | tr '\n' ' ')
           else
-            pr_urls="$prs"
+            pr_urls="N/A"
           fi
           echo "PR URLs:"
-          echo -e "$pr_urls"
+          echo "$pr_urls"
           echo "::set-output name=pr_urls::$pr_urls"
 
       - name: Notify Discord
