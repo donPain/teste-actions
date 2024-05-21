@@ -10,31 +10,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Get the latest merge commit
-        id: get_latest_merge
+      - name: Get pull request URLs or commit URLs from commits
+        id: get_prs_or_commits
         run: |
-          latest_merge_commit=$(git log --merges -n 1 --format="%H" || echo "N/A")
-          echo "Latest merge commit: $latest_merge_commit"
-          echo "::set-output name=latest_merge_commit::$latest_merge_commit"
-
-      - name: Get merged pull requests since the latest merge
-        id: get_prs
-        if: steps.get_latest_merge.outputs.latest_merge_commit != 'N/A'
-        run: |
-          latest_merge_commit="${{ steps.get_latest_merge.outputs.latest_merge_commit }}"
-          pr_urls=""
-          prs=$(git log --merges --pretty=format:"%s" "$latest_merge_commit"..HEAD | grep -oP 'Merge pull request #\K\d+')
-          if [ -n "$prs" ]; then
-            for pr in $prs; do
-              pr_url="https://github.com/${{ github.repository }}/pull/$pr"
-              pr_urls+="$pr_url\n"
-            done
-          else
-            pr_urls="N/A"
+          pr_or_commit_urls=""
+          for sha in $(jq -r '.commits[].id' < $GITHUB_EVENT_PATH); do
+            pr_numbers=$(curl -s "https://api.github.com/repos/${{ github.repository }}/commits/$sha/pulls" \
+              -H "Accept: application/vnd.github.groot-preview+json" \
+              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" | jq -r '.[].number')
+            if [ -n "$pr_numbers" ]; then
+              for pr in $pr_numbers; do
+                pr_url="https://github.com/${{ github.repository }}/pull/$pr"
+                pr_or_commit_urls+="$pr_url\n"
+              done
+            else
+              commit_url="https://github.com/${{ github.repository }}/commit/$sha"
+              pr_or_commit_urls+="$commit_url\n"
+            fi
+          done
+          if [ -z "$pr_or_commit_urls" ]; then
+            pr_or_commit_urls="N/A"
           fi
-          echo "PR URLs:"
-          echo -e "$pr_urls"
-          echo "::set-output name=pr_urls::$pr_urls"
+          echo "PR or Commit URLs:"
+          echo -e "$pr_or_commit_urls"
+          echo "::set-output name=pr_or_commit_urls::$pr_or_commit_urls"
+
 
       - name: Notify Discord
         if: steps.get_prs.outputs.pr_urls != 'N/A'
@@ -44,5 +44,5 @@ jobs:
           description: Homologação
           text: | 
             <@&689593112271519745> Homologação **SGPA-API** Aplicada!
-             - **PullRequests:** ${{ steps.get_prs.outputs.pr_urls }}
+            - ${{ steps.get_prs_or_commits.outputs.pr_or_commit_urls }}
           webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
