@@ -22,7 +22,7 @@ jobs:
         id: get_prs
         run: |
           latest_merge_commit=${{ steps.get_latest_merge.outputs.latest_merge_commit }}
-
+          
           if [ "$latest_merge_commit" = "N/A" ]; then
             echo "No previous merge commits found. Setting PR URLs to 'N/A'."
             pr_urls="N/A"
