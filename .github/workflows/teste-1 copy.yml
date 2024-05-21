@@ -11,15 +11,22 @@ jobs:
         uses: actions/checkout@v2
       - name: my-step
         run: echo "Hello World!"
-      - name: Get merged pull requests
+      - name: Get the latest merge commit
+        id: get_latest_merge
+        run: |
+          latest_merge_commit=$(git log --merges -n 1 --format="%H")
+          echo "Latest merge commit: $latest_merge_commit"
+          echo "::set-output name=latest_merge_commit::$latest_merge_commit"
+
+      - name: Get merged pull requests since the latest merge
         id: get_prs
         run: |
-          # Obtém os commits no push
-          commits=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-          "https://api.github.com/repos/${{ github.repository }}/commits?sha=${{ github.sha }}")
+          latest_merge_commit=${{ steps.get_latest_merge.outputs.latest_merge_commit }}
           
-          # Filtra os PRs mesclados
-          prs=$(echo "$commits" | jq -r 'map(select(.commit.message | contains("Merge pull request #"))) | map(.commit.message | capture("Merge pull request #(?<pr_number>[0-9]+)")) | map(.pr_number) | unique')
+          commits=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/compare/${latest_merge_commit}...${{ github.sha }}")
+          
+          prs=$(echo "$commits" | jq -r '.commits | map(select(.commit.message | contains("Merge pull request #"))) | map(.commit.message | capture("Merge pull request #(?<pr_number>[0-9]+)")) | map(.pr_number) | unique')
           
           pr_urls=""
           for pr in $(echo "$prs" | jq -r '.[]'); do
@@ -29,12 +36,12 @@ jobs:
             pr_urls+="$pr_url\n"
           done
           
-          # Remove a última quebra de linha
-          pr_urls=${pr_urls%\\n}
-          
-          echo "PR URLs: $pr_urls"
-          
-          # Define o output do step
+          echo -e "$pr_urls" > pr_urls.txt
+
+      - name: Set output with PR URLs
+        id: set_output
+        run: |
+          pr_urls=$(cat pr_urls.txt)
           echo "::set-output name=pr_urls::$pr_urls"
 
       - name: Notify Discord
@@ -44,7 +51,7 @@ jobs:
           description: Homologação
           text: | 
             <@&689593112271519745> Homologação **SGPA-API** Aplicada!
-             - **PullRequests**":" ${{ steps.get_prs.outputs.pr_urls }}
+             - **PullRequests**":" ${{ steps.set_output.outputs.pr_urls }}
           webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
 
 
