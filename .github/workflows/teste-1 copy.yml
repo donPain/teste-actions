@@ -44,9 +44,8 @@ jobs:
               pr_urls="No pull requests merged since the last merge."
             else
               for pr in $prs; do
-                pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                  "https://api.github.com/repos/${{ github.repository }}/pulls/$pr")
-                pr_url=$(echo "$pr_info" | jq -r '.html_url')
+                pr_url=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                  "https://api.github.com/repos/${{ github.repository }}/pulls/$pr" | jq -r '.html_url')
                 pr_urls+="$pr_url\n"
               done
             fi
