@@ -19,24 +19,16 @@ jobs:
 
       - name: Get merged pull requests since the latest merge
         id: get_prs
+        if: steps.get_latest_merge.outputs.latest_merge_commit != 'N/A'
         run: |
           latest_merge_commit="${{ steps.get_latest_merge.outputs.latest_merge_commit }}"
-
-          if [ "$latest_merge_commit" = "N/A" ]; then
+          pr_urls=""
+          prs=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                "https://api.github.com/repos/${{ github.repository }}/commits/$latest_merge_commit/pulls" | jq -r '.[] | .html_url')
+          if [ -z "$prs" ]; then
             pr_urls="N/A"
           else
-            prs=$(git log --merges --pretty=format:"%s" "$latest_merge_commit"..HEAD | grep -oP 'Merge pull request #\K\d+')
-            if [ -z "$prs" ]; then
-              pr_urls="N/A"
-            else
-              pr_urls=""
-              for pr in $prs; do
-                pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                  "https://api.github.com/repos/${{ github.repository }}/pulls/$pr")
-                pr_url=$(echo "$pr_info" | jq -r '.html_url')
-                pr_urls+="$pr_url\n"
-              done
-            fi
+            pr_urls="$prs"
           fi
           echo "PR URLs:"
           echo -e "$pr_urls"
