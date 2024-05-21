@@ -26,9 +26,7 @@ jobs:
           prs=$(git log --merges --pretty=format:"%s" "$latest_merge_commit"..HEAD | grep -oP 'Merge pull request #\K\d+')
           if [ -n "$prs" ]; then
             for pr in $prs; do
-              pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                "https://api.github.com/repos/${{ github.repository }}/pulls/$pr")
-              pr_url=$(echo "$pr_info" | jq -r '.html_url')
+              pr_url="https://github.com/${{ github.repository }}/pull/$pr"
               pr_urls+="$pr_url\n"
             done
           else
