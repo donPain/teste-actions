@@ -1,0 +1,48 @@
+name: hello-world
+on:
+  push:
+    branches:
+      - "main"
+jobs:
+  my-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: my-step
+        run: echo "Hello World!"
+      - name: Get merged pull requests
+        id: get_prs
+        run: |
+          commits=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/commits?sha=${{ github.sha }}")
+          
+          prs=$(echo "$commits" | jq -r 'map(select(.commit.message | contains("Merge pull request #"))) | map(.commit.message | capture("Merge pull request #(?<pr_number>[0-9]+)")) | map(.pr_number) | unique')
+          
+          pr_urls=()
+          for pr in $(echo "$prs" | jq -r '.[]'); do
+            pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/pulls/$pr")
+            pr_url=$(echo "$pr_info" | jq -r '.html_url')
+            pr_urls+=($pr_url)
+          done
+          
+          pr_urls_joined=$(IFS=, ; echo "${pr_urls[*]}")
+          echo "PR URLs: $pr_urls_joined"
+          
+          # Define o output do step
+          echo "::set-output name=pr_urls::$pr_urls_joined"
+
+      - name: Notify Discord
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: info
+          description: Homologação
+          text: | 
+            <@&689593112271519745> Homologação **SGPA-API** Aplicada!
+             - **PullRequests**":" ${{ steps.get_prs.outputs.pr_urls }}
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+
+
+
+          

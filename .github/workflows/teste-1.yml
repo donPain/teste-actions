@@ -34,9 +34,14 @@ jobs:
         uses: rjstone/discord-webhook-notify@v1
         with:
           severity: info
-          description: Homologacao
-          text: <@&689593112271519745> Homologação SGPA-API Atualizada! **Release Name**":" ${{ steps.get_release.outputs.release_name }}\n ${{ steps.get_release.outputs.release_body }}\n **Release URL**":" ${{ steps.get_release.outputs.release_html_url }}
+          description: Produção
+          text: | 
+            <@&689593112271519745> Release de Produção **SGPA-API** Aplicada!
+             - **Release Name**":" ${{ steps.get_release.outputs.release_name }}
+             - ${{ steps.get_release.outputs.release_body }}
+             - **Release URL**":" ${{ steps.get_release.outputs.release_html_url }}
           webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+
 
 
           
