@@ -32,8 +32,8 @@ jobs:
             commits=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/compare/${latest_merge_commit}...${{ github.sha }}")
             
-            # Filtra os PRs mesclados
-            prs=$(echo "$commits" | jq -r '.commits | map(select(.commit.message | contains("Merge pull request #"))) | map(.commit.message | capture("Merge pull request #(?<pr_number>[0-9]+)")) | map(.pr_number) | unique')
+            # Filtra os PRs mesclados, se houver
+            prs=$(echo "$commits" | jq -r '.commits | map(select(.commit.message | contains("Merge pull request #"))) | map(.commit.message | capture("Merge pull request #(?<pr_number>[0-9]+)")) | map(.pr_number) | unique // empty')
             
             if [ -z "$prs" ]; then
               pr_urls="N/A"
