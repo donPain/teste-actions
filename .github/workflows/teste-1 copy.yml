@@ -37,7 +37,7 @@ jobs:
             
             if [ -z "$prs" ]; then
               pr_urls="N/A"
-              commits=$(echo "$commits" | jq -r '.commits | map(.commit.message) | join("\n")')
+              commits="No commits since the last merge."
             else
               pr_urls=""
               for pr in $prs; do
