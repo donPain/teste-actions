@@ -9,8 +9,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: my-step
-        run: echo "Hello World!"
+
       - name: Get the latest merge commit
         id: get_latest_merge
         run: |
@@ -18,43 +17,29 @@ jobs:
           echo "Latest merge commit: $latest_merge_commit"
           echo "::set-output name=latest_merge_commit::$latest_merge_commit"
 
-      - name: Get commits since the latest merge
-        id: get_commits
-        run: |
-          latest_merge_commit="${{ steps.get_latest_merge.outputs.latest_merge_commit }}"
-          if [ "$latest_merge_commit" = "N/A" ]; then
-            commits=$(git log --pretty=oneline --no-merges)
-          else
-            commits=$(git log --pretty=oneline --merges --grep="Merge pull request" "$latest_merge_commit"..HEAD)
-          fi
-          echo "Commits since the last merge:"
-          echo "$commits"
-          echo "::set-output name=commits::$commits"
-
       - name: Get merged pull requests since the latest merge
         id: get_prs
+        if: steps.get_latest_merge.outputs.latest_merge_commit != 'N/A'
         run: |
           latest_merge_commit="${{ steps.get_latest_merge.outputs.latest_merge_commit }}"
-          if [ "$latest_merge_commit" = "N/A" ]; then
-            pr_urls="No merge commits found."
+          pr_urls=""
+          prs=$(git log --merges --pretty=format:"%s" "$latest_merge_commit"..HEAD | grep -oP 'Merge pull request #\K\d+')
+          if [ -n "$prs" ]; then
+            for pr in $prs; do
+              pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                "https://api.github.com/repos/${{ github.repository }}/pulls/$pr")
+              pr_url=$(echo "$pr_info" | jq -r '.html_url')
+              pr_urls+="$pr_url\n"
+            done
           else
-            pr_urls=""
-            prs=$(git log --merges --pretty=format:"%s" "$latest_merge_commit"..HEAD | grep -oP 'Merge pull request #\K\d+')
-            if [ -z "$prs" ]; then
-              pr_urls="No pull requests merged since the last merge."
-            else
-              for pr in $prs; do
-                pr_url=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                  "https://api.github.com/repos/${{ github.repository }}/pulls/$pr" | jq -r '.html_url')
-                pr_urls+="$pr_url\n"
-              done
-            fi
+            pr_urls="No pull requests merged since the last merge."
           fi
           echo "PR URLs:"
           echo -e "$pr_urls"
           echo "::set-output name=pr_urls::$pr_urls"
 
       - name: Notify Discord
+        if: steps.get_prs.outputs.pr_urls != 'No pull requests merged since the last merge.'
         uses: rjstone/discord-webhook-notify@v1
         with:
           severity: info
@@ -62,5 +47,4 @@ jobs:
           text: | 
             <@&689593112271519745> Homologação **SGPA-API** Aplicada!
              - **PullRequests:** ${{ steps.get_prs.outputs.pr_urls }}
-             - **Commits since the last merge:** ${{ steps.get_commits.outputs.commits }}
           webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
