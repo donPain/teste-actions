@@ -25,7 +25,7 @@ jobs:
           if [ "$latest_merge_commit" = "N/A" ]; then
             commits=$(git log --pretty=oneline --no-merges)
           else
-            commits=$(git log --pretty=oneline --no-merges "$latest_merge_commit"..HEAD)
+            commits=$(git log --pretty=oneline --merges --grep="Merge pull request" "$latest_merge_commit"..HEAD)
           fi
           echo "Commits since the last merge:"
           echo "$commits"
