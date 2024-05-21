@@ -38,14 +38,15 @@ jobs:
           if [ "$latest_merge_commit" = "N/A" ]; then
             pr_urls="No merge commits found."
           else
+            pr_urls=""
             prs=$(git log --merges --pretty=format:"%s" "$latest_merge_commit"..HEAD | grep -oP 'Merge pull request #\K\d+')
             if [ -z "$prs" ]; then
               pr_urls="No pull requests merged since the last merge."
             else
-              pr_urls=""
               for pr in $prs; do
-                pr_url=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                  "https://api.github.com/repos/${{ github.repository }}/pulls/$pr" | jq -r '.html_url')
+                pr_info=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                  "https://api.github.com/repos/${{ github.repository }}/pulls/$pr")
+                pr_url=$(echo "$pr_info" | jq -r '.html_url')
                 pr_urls+="$pr_url\n"
               done
             fi
