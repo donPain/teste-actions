@@ -11,3 +11,40 @@ jobs:
         uses: actions/checkout@v2
       - name: my-step
         run: echo "Hello World!"
+      - name: Set env
+        run: |
+              echo "GIT_BRANCH=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+              shortSHA=`echo ${GITHUB_SHA} | cut -c1-8`
+              echo "GIT_SHORT_SHA=${shortSHA}" >> $GITHUB_ENV
+              projectNames="${GITHUB_REPOSITORY#*/}"
+              expansion="${projectNames#*-}"
+              echo "TAG=$(echo ${GITHUB_REF##*/})" >> $GITHUB_ENV
+      - name: Get release info
+        id: get_release
+        run: |
+          release_data=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.event.release.tag_name }}")
+          echo "$release_data"
+          echo "::set-output name=release_id::$(echo "$release_data" | jq -r .id)"
+          echo "::set-output name=release_name::$(echo "$release_data" | jq -r .name)"
+          echo "::set-output name=release_body::$(echo "$release_data" | jq -r .body)"
+          echo "::set-output name=release_html_url::$(echo "$release_data" | jq -r .html_url)"
+
+      - name: Display release info
+        run: |
+          echo "Release ID: ${{ steps.get_release.outputs.release_id }}"
+          echo "Release Name: ${{ steps.get_release.outputs.release_name }}"
+          echo "Release Body: ${{ steps.get_release.outputs.release_body }}"
+          echo "Release URL: ${{ steps.get_release.outputs.release_html_url }}"
+
+
+      - name: Notify Discord
+        uses: rjstone/discord-webhook-notify@v1
+        with:
+          severity: info
+          description: Homologacao
+          text: <@&689593112271519745> Homologação SGPA-API Atualizada! Release ID ${{ steps.get_release.outputs.release_id }} Release Name ${{ steps.get_release.outputs.release_name }} Release Body ${{ steps.get_release.outputs.release_body }} Release URL ${{ steps.get_release.outputs.release_html_url }}
+          webhookUrl: ${{ secrets.DISCORD_WEBHOOK }}
+
+
+          
